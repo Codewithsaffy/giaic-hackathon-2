@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "mcp__tavily__tavily-search",
+      "Skill(skill-creator)",
+      "Bash(mkdir -p F:hackathon-2phase-1.claudeskillspython-clean-codescripts F:hackathon-2phase-1.claudeskillspython-clean-codereferences F:hackathon-2phase-1.claudeskillspython-clean-codeassets)",
+      "Bash(python .claude/skills/skill-creator/scripts/init_skill.py python-clean-code --path .claude/skills)",
+      "Bash(python .claude/skills/skill-creator/scripts/package_skill.py .claude/skills/python-clean-code)",
+      "Bash(python -m zipfile -c python-clean-code.zip .claude/skills/python-clean-code/*)",
+      "Bash(dir *.zip)",
+      "Bash(dir .claudeskillspython-clean-code /s)",
+      "Bash(python -m zipfile -c cli-app-architecture.zip .claude/skills/cli-app-architecture/*)",
+      "Bash(.specify/scripts/bash/setup-plan.sh --json)",
+      "Bash(git init)",
+      "Bash(git checkout 001-cli-todo-app)",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh --json)",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)"
+    ]
+  }
+}
