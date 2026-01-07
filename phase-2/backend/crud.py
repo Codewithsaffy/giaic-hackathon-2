@@ -4,7 +4,7 @@ from typing import List, Optional
 import uuid
 import logging
 
-from .models import Task, TaskCreate, TaskUpdate
+from models import Task, TaskCreate, TaskUpdate
 
 logger = logging.getLogger(__name__)
 

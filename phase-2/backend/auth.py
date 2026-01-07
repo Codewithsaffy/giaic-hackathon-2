@@ -9,8 +9,8 @@ import logging
 from datetime import datetime, timezone
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .database import get_session
-from .models import Session
+from database import get_session
+from models import Session
 
 # Load environment variables
 load_dotenv()

@@ -53,7 +53,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 async def init_db():
     """Initialize the database tables."""
     from sqlmodel import SQLModel
-    from .models import Task  # Import here to avoid circular imports
+    from models import Task  # Import here to avoid circular imports
 
     logger.info("Initializing database tables...")
     async with engine.begin() as conn:

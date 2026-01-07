@@ -3,10 +3,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List
 import uuid
 
-from ..models import Task, TaskCreate, TaskUpdate, TaskPublic
-from ..database import get_session
-from ..auth import get_current_user
-from .. import crud
+from models import Task, TaskCreate, TaskUpdate, TaskPublic
+from database import get_session
+from auth import get_current_user
+import crud
 
 router = APIRouter(tags=["Todos"])
 

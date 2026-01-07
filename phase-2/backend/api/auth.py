@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 import uuid
 
-from ..auth import get_current_user
+from auth import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 

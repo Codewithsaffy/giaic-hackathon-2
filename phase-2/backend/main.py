@@ -1,10 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-# Load .env from the backend directory
-env_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(env_path)
-
+# Load environment variables (Vercel provides these automatically)
+load_dotenv()
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,10 +12,10 @@ from contextlib import asynccontextmanager
 import logging
 import uuid
 
-from .database import get_session, engine, init_db
-from .models import Task, TaskCreate, TaskUpdate, TaskPublic
-from . import crud
-from .api import auth, todos
+from database import get_session, engine, init_db
+from models import Task, TaskCreate, TaskUpdate, TaskPublic
+import crud
+from api import auth, todos
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
