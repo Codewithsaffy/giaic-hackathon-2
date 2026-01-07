@@ -26,7 +26,7 @@ security = HTTPBearer(auto_error=False)
 JWT_SECRET = os.getenv("BETTER_AUTH_SECRET")
 BETTER_AUTH_URL = os.getenv("BETTER_AUTH_URL", "http://localhost:3000")
 JWKS_URL = f"{BETTER_AUTH_URL}/api/auth/jwks"
-API_AUDIENCE = "http://127.0.0.1:8000"
+API_AUDIENCE = os.getenv("API_AUDIENCE", "http://127.0.0.1:8000")
 
 # Initialize JWKS Client
 jwks_client = PyJWKClient(JWKS_URL)
