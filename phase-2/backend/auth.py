@@ -39,7 +39,14 @@ async def verify_token(token: str, db: AsyncSession) -> dict:
     3. Try Opaque Session Token - Fallback
     """
     
-    # 1. Try JWKS Verification (EdDSA)
+    # Debug: Peek at token header
+    try:
+        header = jwt.get_unverified_header(token)
+        logger.info(f"Token Header: {header}")
+    except Exception as e:
+        logger.debug(f"Could not parse token header: {e}")
+
+    # 1. Try JWKS Verification (EdDSA/RS256)
     try:
         # This automatically fetches keys and finds the right one by 'kid'
         signing_key = jwks_client.get_signing_key_from_jwt(token)
@@ -47,16 +54,14 @@ async def verify_token(token: str, db: AsyncSession) -> dict:
         payload = jwt.decode(
             token,
             signing_key.key,
-            algorithms=["EdDSA", "RS256"],
+            algorithms=["EdDSA", "RS256", "HS256"],
             audience=API_AUDIENCE,
-            issuer=BETTER_AUTH_URL,
-            # Allow some clock skew
             leeway=60 
         )
         logger.info(f"Successfully verified JWT (JWKS) for user {payload.get('sub')}")
         return payload
     except Exception as e:
-        logger.warning(f"JWKS verification failed: {e}")
+        logger.warning(f"JWKS verification failed: {str(e)}")
 
     # 2. Try Shared Secret Verification (HS256)
     if JWT_SECRET:
@@ -64,14 +69,13 @@ async def verify_token(token: str, db: AsyncSession) -> dict:
             payload = jwt.decode(
                 token,
                 JWT_SECRET,
-                algorithms=["HS256"],
+                algorithms=["HS256", "EdDSA", "RS256"],
                 audience=API_AUDIENCE,
-                issuer=BETTER_AUTH_URL
             )
             logger.info(f"Successfully verified JWT (HS256) for user {payload.get('sub')}")
             return payload
         except Exception as e:
-            logger.warning(f"HS256 verification failed: {e}")
+            logger.warning(f"HS256 verification failed: {str(e)}")
 
     # 3. Verify as Opaque Session Token in DB
     try:

@@ -1,8 +1,21 @@
+import sys
 import os
+
+# Add the current directory to sys.path to support both local and Vercel execution
+# This ensures that 'import database', etc. work regardless of where the command is run
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 from dotenv import load_dotenv
 
-# Load environment variables (Vercel provides these automatically)
+# Load environment variables
+# 1. Try default loading (CWD - good for Vercel/Local-in-folder)
 load_dotenv()
+# 2. Try absolute path relative to script (Good for Local-from-parent)
+env_path = os.path.join(current_dir, ".env")
+if os.path.exists(env_path):
+    load_dotenv(env_path, override=True)
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware

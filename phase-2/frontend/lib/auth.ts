@@ -11,7 +11,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
+  max: 10
 });
 
 const secret = process.env.BETTER_AUTH_SECRET;
@@ -23,18 +26,17 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  trustedOrigins: ['http://localhost:3000'],
+  trustedOrigins: [process.env.BETTER_AUTH_URL || 'http://localhost:3000'],
   plugins: [
     jwt({
-      secret: process.env.BETTER_AUTH_SECRET, // Explicitly pass secret
-      algorithm: 'HS256', // Force symmetric algorithm matching backend
+      secret: process.env.BETTER_AUTH_SECRET,
+      algorithm: 'HS256',
       expirationTime: '7d',
-
       jwt: {
-        issuer: 'http://localhost:3000',
-        audience: 'http://127.0.0.1:8000'
+        issuer: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+        audience: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
       }
     }),
-    nextCookies() // Must be last plugin
+    nextCookies()
   ]
 });
