@@ -1,7 +1,0 @@
-app/api/auth/route.ts(4,16): error TS2339: Property 'GET' does not exist on type 'Auth<{ database: Pool; emailAndPassword: { enabled: true; }; trustedOrigins: string[]; }>'.
-app/api/auth/route.ts(4,21): error TS2339: Property 'POST' does not exist on type 'Auth<{ database: Pool; emailAndPassword: { enabled: true; }; trustedOrigins: string[]; }>'.
-app/todo/page.tsx(18,7): error TS7034: Variable 'initialTasks' implicitly has type 'any[]' in some locations where its type cannot be determined.
-app/todo/page.tsx(35,33): error TS7005: Variable 'initialTasks' implicitly has an 'any[]' type.
-components/task-form.tsx(4,27): error TS2307: Cannot find module '@/lib/api' or its corresponding type declarations.
-components/todo-list.tsx(4,27): error TS2307: Cannot find module '@/lib/api' or its corresponding type declarations.
-lib/api-server.ts(27,29): error TS2339: Property 'get' does not exist on type 'Promise<ReadonlyRequestCookies>'.
