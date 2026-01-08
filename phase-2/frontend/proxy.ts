@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 const authRoutes = ["/auth/sign-in", "/auth/sign-up"];
 const protectedRoutes = ["/todo", "/add-task"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const sessionToken = request.cookies.get("better-auth.session_token")?.value ||
         request.cookies.get("__secure-better-auth.session_token")?.value;
 
