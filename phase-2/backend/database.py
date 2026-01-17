@@ -9,14 +9,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Robustly load .env from the file's directory to ensure DATABASE_URL is set
-from dotenv import load_dotenv
-from pathlib import Path
-env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path)
-
 # Neon database URL format - asyncpg driver compatible
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:password@ep-xxx.region.aws.neon.tech:5432/dbname")
 
 # Ensure we use the asyncpg driver
 if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):

@@ -1,14 +1,9 @@
 import { authClient } from './auth-client';
 
-// Resolve the API Base URL. 
-// Uses 127.0.0.1 fallback for local dev to avoid Windows IPv6 resolution issues.
-const envUrl = process.env.NEXT_PUBLIC_API_URL;
-const API_BASE_URL = envUrl
-    ? envUrl.replace('localhost', '127.0.0.1')
-    : 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export interface Task {
-    id: number;
+    id: string;
     title: string;
     description?: string;
     completed: boolean;
@@ -104,7 +99,7 @@ export const api = {
     getTasks: () =>
         apiClient<Task[]>(userId => `/api/${userId}/tasks`),
 
-    getTaskById: (id: number) =>
+    getTaskById: (id: string) =>
         apiClient<Task>(userId => `/api/${userId}/tasks/${id}`),
 
     createTask: (task: { title: string; description?: string }) =>
@@ -113,18 +108,18 @@ export const api = {
             body: JSON.stringify(task),
         }),
 
-    updateTask: (id: number, task: { title?: string; description?: string; completed?: boolean }) =>
+    updateTask: (id: string, task: { title?: string; description?: string; completed?: boolean }) =>
         apiClient<Task>(userId => `/api/${userId}/tasks/${id}`, {
             method: 'PUT',
             body: JSON.stringify(task),
         }),
 
-    toggleTaskComplete: (id: number) =>
+    toggleTaskComplete: (id: string) =>
         apiClient<Task>(userId => `/api/${userId}/tasks/${id}/complete`, {
             method: 'PATCH',
         }),
 
-    deleteTask: (id: number) =>
+    deleteTask: (id: string) =>
         apiClient<void>(userId => `/api/${userId}/tasks/${id}`, {
             method: 'DELETE',
         }),

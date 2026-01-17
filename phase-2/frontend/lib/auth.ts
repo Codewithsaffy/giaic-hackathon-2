@@ -12,10 +12,9 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false
   },
-  connectionTimeoutMillis: 15000,
+  connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,
-  max: 10,
-  keepAlive: true,
+  max: 10
 });
 
 const secret = process.env.BETTER_AUTH_SECRET;

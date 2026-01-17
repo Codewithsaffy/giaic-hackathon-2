@@ -1,11 +1,6 @@
 import { cookies } from 'next/headers';
 
-// Resolve the API Base URL. 
-// Uses 127.0.0.1 fallback for local dev to avoid Windows IPv6 resolution issues.
-const envUrl = process.env.NEXT_PUBLIC_API_URL;
-const API_BASE_URL = envUrl
-  ? envUrl.replace('localhost', '127.0.0.1')
-  : 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -63,7 +58,7 @@ export const tasksApiServer = {
   getAll: (userId: string) =>
     apiClientServer<Task[]>(`/api/${userId}/tasks`),
 
-  getById: (userId: string, id: number) =>
+  getById: (userId: string, id: string) =>
     apiClientServer<Task>(`/api/${userId}/tasks/${id}`),
 
   create: (userId: string, taskData: { title: string; description?: string }) =>
@@ -72,13 +67,13 @@ export const tasksApiServer = {
       body: taskData
     }),
 
-  update: (userId: string, id: number, taskData: Partial<Task>) =>
+  update: (userId: string, id: string, taskData: Partial<Task>) =>
     apiClientServer<Task>(`/api/${userId}/tasks/${id}`, {
       method: 'PUT',
       body: taskData
     }),
 
-  delete: (userId: string, id: number) =>
+  delete: (userId: string, id: string) =>
     apiClientServer<void>(`/api/${userId}/tasks/${id}`, {
       method: 'DELETE'
     })
@@ -86,7 +81,7 @@ export const tasksApiServer = {
 
 // Type definitions
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   description?: string;
   completed: boolean;
