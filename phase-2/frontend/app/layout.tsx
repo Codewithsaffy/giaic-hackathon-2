@@ -45,12 +45,12 @@ export default async function RootLayout({
       <body
         className={`${outfit.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} font-body bg-[#020202] text-foreground min-h-screen overflow-x-hidden`}
       >
-        <div className="flex">
+        <div className="flex flex-col md:flex-row min-h-screen">
           <Sidebar />
 
-          <div className="flex-1 flex flex-col min-h-screen pl-20">
+          <div className="flex-1 flex flex-col min-h-screen pb-20 md:pb-0 md:pl-20">
             {/* Header */}
-            <header className="sticky top-0 z-40 w-full h-16 border-b border-neutral-900 bg-black/50 backdrop-blur-xl flex items-center px-8">
+            <header className="sticky top-0 z-40 w-full h-16 border-b border-neutral-900 bg-black/50 backdrop-blur-xl flex items-center px-4 md:px-8">
               <Link href="/" className="font-heading font-bold text-xl tracking-tighter text-white">
                 TASKFLOW<span className="text-neutral-500">.</span>
               </Link>

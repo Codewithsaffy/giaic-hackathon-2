@@ -44,13 +44,13 @@ export function Sidebar() {
 
     return (
         <aside className="sidebar-container">
-            {/* App Logo */}
-            <Link href="/" className="mb-10 w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-white/10 group cursor-pointer transition-transform hover:scale-110">
+            {/* App Logo (Desktop Only) */}
+            <Link href="/" className="hidden md:flex mb-10 w-12 h-12 bg-white rounded-2xl items-center justify-center shadow-lg shadow-white/10 group cursor-pointer transition-transform hover:scale-110">
                 <div className="w-6 h-6 bg-black rounded-lg transform rotate-45 group-hover:rotate-90 transition-transform duration-500"></div>
             </Link>
 
             {/* Nav Items */}
-            <div className="flex-1 flex flex-col items-center">
+            <div className="flex flex-row w-full justify-around md:flex-col md:w-auto md:flex-1 md:justify-start items-center">
                 {items.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
@@ -68,10 +68,18 @@ export function Sidebar() {
                         </Link>
                     );
                 })}
+
+                {/* Mobile Logout (Integrated into nav flow) */}
+                {session && (
+                    <button onClick={handleSignOut} className="sidebar-item group md:hidden">
+                        <LogOut className="w-6 h-6 text-neutral-500 group-hover:text-red-400 transition-colors" strokeWidth={1.5} />
+                        <span className="sidebar-label group-hover:text-red-400 transition-colors">Logout</span>
+                    </button>
+                )}
             </div>
 
-            {/* Bottom Actions */}
-            <div className="flex flex-col items-center gap-4 mt-auto">
+            {/* Desktop Bottom Actions (Logout) */}
+            <div className="hidden md:flex flex-col items-center gap-4 mt-auto">
                 {session && (
                     <button onClick={handleSignOut} className="sidebar-item group">
                         <LogOut className="w-6 h-6 text-neutral-500 group-hover:text-red-400 transition-colors" strokeWidth={1.5} />

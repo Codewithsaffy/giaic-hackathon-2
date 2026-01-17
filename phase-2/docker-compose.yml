@@ -1,0 +1,13 @@
+services:
+  backend:
+    build: ./backend
+    container_name: fast-api-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    # Load environment variables from backend/.env if it exists
+    env_file:
+      - ./backend/.env
+    # Restart policy
+    restart: always

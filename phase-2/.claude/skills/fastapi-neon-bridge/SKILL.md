@@ -1,55 +1,31 @@
 ---
 name: fastapi-neon-bridge
-description: |
-  This skill should be used when creating CRUD endpoints in FastAPI backed by Neon Postgres database using SQLModel. It enforces async patterns and proper dependency injection for database sessions.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+description: Expert in FastAPI with Neon PostgreSQL integration using SQLModel and async sessions. Handles database configuration, model definitions, and async CRUD operations.
+allowed-tools: Read, Grep, Glob, Edit, Write
 ---
 
-# FastAPI-Neon Bridge Skill
+# FastAPI Neon Bridge
 
-This skill provides expert guidance for creating CRUD endpoints in FastAPI backed by Neon Postgres using SQLModel with proper async patterns and dependency injection.
+This skill should be used when implementing FastAPI applications with Neon PostgreSQL database using SQLModel and async sessions.
 
-## Skill Purpose
+## Core Capabilities
 
-This skill helps configure and implement FastAPI CRUD endpoints with Neon Postgres database following these constraints:
-- **Async Only:** All routes and DB calls must be `async/await`
-- **Driver:** Must use `postgresql+asyncpg` in the connection string
-- **Dependency:** Must use a `get_session` dependency for all routes
+### 1. Database Configuration
 
-## Before Implementation
-
-Gather context to ensure successful implementation:
-
-| Source | Gather |
-|--------|--------|
-| **Codebase** | Existing project structure, current database models, environment variables, existing API routes |
-| **Conversation** | User's specific requirements for models, endpoints, validation, authentication |
-| **Skill References** | Domain patterns from `assets/db_setup.py` and best practices |
-| **User Guidelines** | Project-specific conventions, team standards, security requirements |
-
-Ensure all required context is gathered before implementing.
-
-## Neon Database Connection String Format
-
-The correct format for Neon database connection string with asyncpg:
-```
-postgresql+asyncpg://username:password@ep-xxx.us-east-1.aws.neon.tech/dbname?sslmode=require
-```
-
-## Implementation Patterns
-
-### ✅ CORRECT: Async Database Setup with Neon
-
+#### Async Engine Setup
 ```python
-# database.py
 from typing import AsyncGenerator
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 import os
+import uuid
 
 # Neon database URL format
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://username:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require"
+)
 
 # Create async engine with Neon-specific settings
 engine: AsyncEngine = create_async_engine(
@@ -67,63 +43,174 @@ AsyncSessionFactory = async_sessionmaker(
 )
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency to provide database session for FastAPI routes."""
+    """
+    Dependency to provide database session for FastAPI routes.
+
+    Usage in FastAPI routes:
+    ```
+    from fastapi import Depends
+
+    @app.get("/users/")
+    async def get_users(session: AsyncSession = Depends(get_session)):
+        # Your route logic here
+        pass
+    ```
+    """
     async with AsyncSessionFactory() as session:
         yield session
 ```
 
-### ✅ CORRECT: Model Definition
+### 2. Model Definitions
 
+#### Base Model with SQLModel
 ```python
-# models.py
 from sqlmodel import SQLModel, Field
 from typing import Optional
 import uuid
+from datetime import datetime
+from pydantic import BaseModel
 
-class UserBase(SQLModel):
-    name: str = Field(min_length=1, max_length=100)
-    email: str = Field(unique=True, min_length=5, max_length=100)
-    age: Optional[int] = Field(default=None, ge=0, le=150)
+class TaskBase(SQLModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    completed: bool = Field(default=False)
 
-class User(UserBase, table=True):
+class Task(TaskBase, table=True):
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: str = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class UserCreate(UserBase):
+class TaskCreate(TaskBase):
     pass
 
-class UserUpdate(SQLModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    email: Optional[str] = Field(default=None, unique=True, min_length=5, max_length=100)
-    age: Optional[int] = Field(default=None, ge=0, le=150)
+class TaskUpdate(SQLModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    completed: Optional[bool] = Field(default=None)
 
-class UserPublic(UserBase):
+class TaskPublic(TaskBase):
     id: uuid.UUID
+    owner_id: str
+    created_at: datetime
+    updated_at: datetime
 ```
 
-### ✅ CORRECT: FastAPI CRUD Endpoints
+### 3. CRUD Operations
 
+#### Async CRUD Functions
 ```python
-# main.py
-from fastapi import FastAPI, Depends, HTTPException
-from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List
-from contextlib import asynccontextmanager
+from sqlalchemy.exc import IntegrityError
 import logging
 
-from .database import get_session, engine
-from .models import User, UserCreate, UserUpdate, UserPublic
-from . import crud
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+async def create_task(session: AsyncSession, task: TaskCreate, owner_id: str) -> Task:
+    """Create a new task in the database."""
+    try:
+        db_task = Task.model_validate(task)
+        db_task.owner_id = owner_id
+        session.add(db_task)
+        await session.commit()
+        await session.refresh(db_task)
+        logger.info(f"Successfully created task with ID: {db_task.id}")
+        return db_task
+    except IntegrityError as e:
+        await session.rollback()
+        logger.error(f"Integrity error creating task: {str(e)}")
+        raise ValueError("Error creating task") from e
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Unexpected error creating task: {str(e)}")
+        raise
+
+async def get_task_by_id(session: AsyncSession, task_id: uuid.UUID) -> Optional[Task]:
+    """Get a task by ID."""
+    try:
+        from sqlmodel import select
+        statement = select(Task).where(Task.id == task_id)
+        result = await session.exec(statement)
+        task = result.first()
+        if task:
+            logger.info(f"Retrieved task with ID: {task.id}")
+        else:
+            logger.info(f"Task with ID {task_id} not found")
+        return task
+    except Exception as e:
+        logger.error(f"Error retrieving task by ID {task_id}: {str(e)}")
+        raise
+
+async def get_tasks_by_user(session: AsyncSession, user_id: str, offset: int = 0, limit: int = 100) -> list[Task]:
+    """Get all tasks for a specific user with pagination."""
+    try:
+        from sqlmodel import select
+        statement = select(Task).where(Task.owner_id == user_id).offset(offset).limit(limit)
+        result = await session.exec(statement)
+        tasks = result.fetchall()
+        logger.info(f"Retrieved {len(tasks)} tasks for user {user_id} with offset {offset} and limit {limit}")
+        return tasks
+    except Exception as e:
+        logger.error(f"Error retrieving tasks for user {user_id}: {str(e)}")
+        raise
+
+async def update_task(
+    session: AsyncSession,
+    task_id: uuid.UUID,
+    task_update: TaskUpdate
+) -> Optional[Task]:
+    """Update a task by ID."""
+    try:
+        db_task = await get_task_by_id(session, task_id)
+        if not db_task:
+            logger.info(f"Attempt to update non-existent task with ID: {task_id}")
+            return None
+
+        task_data = task_update.model_dump(exclude_unset=True)
+        db_task.sqlmodel_update(task_data)
+
+        await session.commit()
+        await session.refresh(db_task)
+        logger.info(f"Successfully updated task with ID: {db_task.id}")
+        return db_task
+    except IntegrityError as e:
+        await session.rollback()
+        logger.error(f"Integrity error updating task {task_id}: {str(e)}")
+        raise ValueError("Error updating task") from e
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Unexpected error updating task {task_id}: {str(e)}")
+        raise
+
+async def delete_task(session: AsyncSession, task_id: uuid.UUID) -> bool:
+    """Delete a task by ID."""
+    try:
+        db_task = await get_task_by_id(session, task_id)
+        if not db_task:
+            logger.info(f"Attempt to delete non-existent task with ID: {task_id}")
+            return False
+
+        await session.delete(db_task)
+        await session.commit()
+        logger.info(f"Successfully deleted task with ID: {task_id}")
+        return True
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Error deleting task {task_id}: {str(e)}")
+        raise
+```
+
+### 4. FastAPI Integration
+
+#### Database Initialization
+```python
+from contextlib import asynccontextmanager
+from sqlmodel import SQLModel
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database tables on startup."""
     logger.info("Initializing database...")
     async with engine.begin() as conn:
-        # Create all tables - only in development, consider migrations for production
         await conn.run_sync(SQLModel.metadata.create_all)
     logger.info("Database initialized.")
     yield
@@ -131,268 +218,84 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
     logger.info("Database disposed.")
 
-app = FastAPI(lifespan=lifespan)
-
-@app.post("/users/", response_model=UserPublic, status_code=201)
-async def create_user(
-    user: UserCreate,
-    session: AsyncSession = Depends(get_session)
-) -> UserPublic:
-    """Create a new user."""
-    try:
-        db_user = await crud.create_user(session, user)
-        logger.info(f"Created user with ID: {db_user.id}")
-        return db_user
-    except Exception as e:
-        await session.rollback()
-        logger.error(f"Error creating user: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/users/{user_id}", response_model=UserPublic)
-async def get_user(
-    user_id: uuid.UUID,
-    session: AsyncSession = Depends(get_session)
-) -> UserPublic:
-    """Get a user by ID."""
-    db_user = await crud.get_user_by_id(session, user_id)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
-
-@app.get("/users/", response_model=List[UserPublic])
-async def get_users(
-    session: AsyncSession = Depends(get_session),
-    offset: int = 0,
-    limit: int = 100
-) -> List[UserPublic]:
-    """Get all users with pagination."""
-    users = await crud.get_users(session, offset=offset, limit=limit)
-    return users
-
-@app.put("/users/{user_id}", response_model=UserPublic)
-async def update_user(
-    user_id: uuid.UUID,
-    user_update: UserUpdate,
-    session: AsyncSession = Depends(get_session)
-) -> UserPublic:
-    """Update a user by ID."""
-    db_user = await crud.update_user(session, user_id, user_update)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"Updated user with ID: {db_user.id}")
-    return db_user
-
-@app.delete("/users/{user_id}", status_code=204)
-async def delete_user(
-    user_id: uuid.UUID,
-    session: AsyncSession = Depends(get_session)
-) -> None:
-    """Delete a user by ID."""
-    success = await crud.delete_user(session, user_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"Deleted user with ID: {user_id}")
-    return None
+app = FastAPI(
+    title="Todo App API",
+    description="REST API for the Todo application with JWT authentication",
+    version="1.0.0",
+    lifespan=lifespan
+)
 ```
 
-### ✅ CORRECT: CRUD Operations
+### 5. Authentication Integration
 
+#### Protected Routes with JWT
 ```python
-# crud.py
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.exc import IntegrityError, NoResultFound
-from typing import List, Optional
+from fastapi import Depends, HTTPException, status
+from typing import Dict, Any
 import uuid
-import logging
+from auth import get_current_user
 
-from .models import User, UserCreate, UserUpdate
+async def get_current_user_tasks(
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+) -> list[Task]:
+    """
+    Get tasks for the current authenticated user.
+    """
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user ID"
+        )
 
-logger = logging.getLogger(__name__)
+    return await get_tasks_by_user(session, str(user_id))
 
-async def create_user(session: AsyncSession, user: UserCreate) -> User:
-    """Create a new user in the database."""
-    try:
-        db_user = User.model_validate(user)
-        session.add(db_user)
-        await session.commit()
-        await session.refresh(db_user)
-        logger.info(f"Successfully created user with ID: {db_user.id}")
-        return db_user
-    except IntegrityError as e:
-        await session.rollback()
-        logger.error(f"Integrity error creating user: {str(e)}")
-        raise ValueError("User with this email already exists") from e
-    except Exception as e:
-        await session.rollback()
-        logger.error(f"Unexpected error creating user: {str(e)}")
-        raise
-
-async def get_user_by_id(session: AsyncSession, user_id: uuid.UUID) -> Optional[User]:
-    """Get a user by ID."""
-    try:
-        statement = select(User).where(User.id == user_id)
-        result = await session.exec(statement)
-        user = result.first()
-        if user:
-            logger.info(f"Retrieved user with ID: {user.id}")
-        else:
-            logger.info(f"User with ID {user_id} not found")
-        return user
-    except Exception as e:
-        logger.error(f"Error retrieving user by ID {user_id}: {str(e)}")
-        raise
-
-async def get_users(session: AsyncSession, offset: int = 0, limit: int = 100) -> List[User]:
-    """Get all users with pagination."""
-    try:
-        statement = select(User).offset(offset).limit(limit)
-        result = await session.exec(statement)
-        users = result.fetchall()
-        logger.info(f"Retrieved {len(users)} users with offset {offset} and limit {limit}")
-        return users
-    except Exception as e:
-        logger.error(f"Error retrieving users: {str(e)}")
-        raise
-
-async def update_user(
-    session: AsyncSession,
-    user_id: uuid.UUID,
-    user_update: UserUpdate
-) -> Optional[User]:
-    """Update a user by ID."""
-    try:
-        db_user = await get_user_by_id(session, user_id)
-        if not db_user:
-            logger.info(f"Attempt to update non-existent user with ID: {user_id}")
-            return None
-
-        user_data = user_update.model_dump(exclude_unset=True)
-        db_user.sqlmodel_update(user_data)
-
-        await session.commit()
-        await session.refresh(db_user)
-        logger.info(f"Successfully updated user with ID: {db_user.id}")
-        return db_user
-    except IntegrityError as e:
-        await session.rollback()
-        logger.error(f"Integrity error updating user {user_id}: {str(e)}")
-        raise ValueError("Another user with this email already exists") from e
-    except Exception as e:
-        await session.rollback()
-        logger.error(f"Unexpected error updating user {user_id}: {str(e)}")
-        raise
-
-async def delete_user(session: AsyncSession, user_id: uuid.UUID) -> bool:
-    """Delete a user by ID."""
-    try:
-        db_user = await get_user_by_id(session, user_id)
-        if not db_user:
-            logger.info(f"Attempt to delete non-existent user with ID: {user_id}")
-            return False
-
-        await session.delete(db_user)
-        await session.commit()
-        logger.info(f"Successfully deleted user with ID: {user_id}")
-        return True
-    except Exception as e:
-        await session.rollback()
-        logger.error(f"Error deleting user {user_id}: {str(e)}")
-        raise
+@router.get("/tasks")
+async def get_user_tasks(
+    tasks: list[Task] = Depends(get_current_user_tasks)
+) -> list[TaskPublic]:
+    """
+    Get all tasks for the authenticated user.
+    """
+    return tasks
 ```
 
-### ❌ INCORRECT: Synchronous Approach
+## Environment Configuration
 
-```python
-# DON'T DO THIS - Synchronous approach violates async constraint
-from sqlmodel import Session  # Wrong - not AsyncSession
-from sqlmodel import create_engine  # Wrong - not create_async_engine
-
-def get_session():  # Wrong - not async
-    with Session(engine) as session:  # Wrong - not AsyncSession
-        yield session
-
-@app.get("/users/")
-def get_users(session: Session = Depends(get_session)):  # Wrong - not async
-    # This violates all constraints
-    pass
-```
-
-### ❌ INCORRECT: Direct Database Calls
-
-```python
-# DON'T DO THIS - Direct DB calls without dependency
-@app.get("/users/")
-async def get_users():
-    # Wrong - creating session directly instead of using dependency
-    engine = create_async_engine(DATABASE_URL)
-    async with AsyncSession(engine) as session:
-        # This bypasses the dependency injection pattern
-        pass
-```
-
-## Required Dependencies
-
-Install the necessary packages:
-
+### Backend (.env)
 ```bash
-pip install fastapi[all] sqlmodel sqlalchemy[asyncio] asyncpg python-multipart
-# Or if using poetry
-poetry add fastapi[all] sqlmodel sqlalchemy[asyncio] asyncpg python-multipart
-```
-
-## Environment Variables
-
-Set up your environment variables:
-
-```bash
-# .env
 DATABASE_URL=postgresql+asyncpg://username:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
+BETTER_AUTH_SECRET=your-super-secret-jwt-key-here
+BETTER_AUTH_URL=http://localhost:3000
+API_AUDIENCE=http://127.0.0.1:8000
+ALLOWED_ORIGINS=http://localhost:3000
 ```
 
-## Testing Considerations
+## Best Practices
 
-For testing, you can override the database dependency:
+1. **Connection Pooling**: Use NullPool for Neon serverless architecture
+2. **Transaction Management**: Always use try/except with session rollback
+3. **Logging**: Implement comprehensive logging for database operations
+4. **Error Handling**: Handle IntegrityError and other database-specific exceptions
+5. **Type Safety**: Use proper type hints for async functions and return types
+6. **Security**: Validate user permissions when accessing resources
+7. **Pagination**: Implement offset/limit for large datasets
+8. **Session Management**: Use dependency injection for session management
 
-```python
-# test_main.py
-import pytest
-from httpx import AsyncClient
-from unittest.mock import AsyncMock
-from fastapi import FastAPI
+## Performance Considerations
 
-from app.database import get_session
-from app.main import app
+1. **Async Operations**: Use async/await for all database operations
+2. **Connection Management**: Properly dispose of connections on shutdown
+3. **Query Optimization**: Use select statements efficiently with filters
+4. **Caching**: Consider caching for frequently accessed data
+5. **Indexing**: Ensure proper database indexing for query performance
 
-@pytest.fixture
-async def async_client():
-    # Create a mock session for testing
-    mock_session = AsyncMock()
+## Troubleshooting
 
-    # Override the dependency
-    async def override_get_session():
-        yield mock_session
-
-    app.dependency_overrides[get_session] = override_get_session
-
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
-
-    # Clean up
-    app.dependency_overrides.clear()
-```
-
-## Security Considerations
-
-1. **Connection Pooling**: Use appropriate connection pooling settings for Neon's serverless architecture
-2. **SSL**: Always use `sslmode=require` for Neon connections
-3. **Environment Variables**: Store database credentials in environment variables
-4. **Input Validation**: Use Pydantic models for request validation
-5. **SQL Injection**: SQLModel and SQLAlchemy protect against SQL injection when using parameterized queries
-
-## Performance Tips
-
-1. **NullPool**: Use `NullPool` for Neon serverless connections to avoid connection retention overhead
-2. **Autocommit**: Consider using `AUTOCOMMIT` isolation level for Neon serverless
-3. **Short-lived Connections**: Neon works best with short-lived connections
-4. **Connection Lifecycle**: Always use the dependency injection pattern to ensure proper connection cleanup
+### Common Issues
+- Connection timeouts: Increase connection timeout settings
+- Pool exhaustion: Adjust pool size based on load
+- SSL errors: Ensure SSL settings are correct for Neon
+- Serialization issues: Use proper model validation and serialization
+- Transaction conflicts: Implement proper error handling and retry logic

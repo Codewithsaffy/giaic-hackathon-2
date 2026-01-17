@@ -49,30 +49,39 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 # Example model definitions - modify according to your needs
 from sqlmodel import SQLModel, Field
 from typing import Optional
+import uuid
+from datetime import datetime
+from pydantic import BaseModel
 
 
-class UserBase(SQLModel):
-    name: str = Field(min_length=1, max_length=100)
-    email: str = Field(unique=True, min_length=5, max_length=100)
-    age: Optional[int] = Field(default=None, ge=0, le=150)
+class TaskBase(SQLModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    completed: bool = Field(default=False)
 
 
-class User(UserBase, table=True):
+class Task(TaskBase, table=True):
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: str = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-class UserCreate(UserBase):
+class TaskCreate(TaskBase):
     pass
 
 
-class UserUpdate(SQLModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    email: Optional[str] = Field(default=None, unique=True, min_length=5, max_length=100)
-    age: Optional[int] = Field(default=None, ge=0, le=150)
+class TaskUpdate(SQLModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    completed: Optional[bool] = Field(default=None)
 
 
-class UserPublic(UserBase):
+class TaskPublic(TaskBase):
     id: uuid.UUID
+    owner_id: str
+    created_at: datetime
+    updated_at: datetime
 
 
 # Example CRUD operations - modify according to your needs
@@ -82,100 +91,101 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def create_user(session: AsyncSession, user: UserCreate) -> User:
-    """Create a new user in the database."""
+async def create_task(session: AsyncSession, task: TaskCreate, owner_id: str) -> Task:
+    """Create a new task in the database."""
     try:
-        db_user = User.model_validate(user)
-        session.add(db_user)
+        db_task = Task.model_validate(task)
+        db_task.owner_id = owner_id
+        session.add(db_task)
         await session.commit()
-        await session.refresh(db_user)
-        logger.info(f"Successfully created user with ID: {db_user.id}")
-        return db_user
+        await session.refresh(db_task)
+        logger.info(f"Successfully created task with ID: {db_task.id}")
+        return db_task
     except IntegrityError as e:
         await session.rollback()
-        logger.error(f"Integrity error creating user: {str(e)}")
-        raise ValueError("User with this email already exists") from e
+        logger.error(f"Integrity error creating task: {str(e)}")
+        raise ValueError("Error creating task") from e
     except Exception as e:
         await session.rollback()
-        logger.error(f"Unexpected error creating user: {str(e)}")
+        logger.error(f"Unexpected error creating task: {str(e)}")
         raise
 
 
-async def get_user_by_id(session: AsyncSession, user_id: uuid.UUID) -> Optional[User]:
-    """Get a user by ID."""
+async def get_task_by_id(session: AsyncSession, task_id: uuid.UUID) -> Optional[Task]:
+    """Get a task by ID."""
     try:
         from sqlmodel import select
-        statement = select(User).where(User.id == user_id)
+        statement = select(Task).where(Task.id == task_id)
         result = await session.exec(statement)
-        user = result.first()
-        if user:
-            logger.info(f"Retrieved user with ID: {user.id}")
+        task = result.first()
+        if task:
+            logger.info(f"Retrieved task with ID: {task.id}")
         else:
-            logger.info(f"User with ID {user_id} not found")
-        return user
+            logger.info(f"Task with ID {task_id} not found")
+        return task
     except Exception as e:
-        logger.error(f"Error retrieving user by ID {user_id}: {str(e)}")
+        logger.error(f"Error retrieving task by ID {task_id}: {str(e)}")
         raise
 
 
-async def get_users(session: AsyncSession, offset: int = 0, limit: int = 100) -> list[User]:
-    """Get all users with pagination."""
+async def get_tasks_by_user(session: AsyncSession, user_id: str, offset: int = 0, limit: int = 100) -> list[Task]:
+    """Get all tasks for a specific user with pagination."""
     try:
         from sqlmodel import select
-        statement = select(User).offset(offset).limit(limit)
+        statement = select(Task).where(Task.owner_id == user_id).offset(offset).limit(limit)
         result = await session.exec(statement)
-        users = result.fetchall()
-        logger.info(f"Retrieved {len(users)} users with offset {offset} and limit {limit}")
-        return users
+        tasks = result.fetchall()
+        logger.info(f"Retrieved {len(tasks)} tasks for user {user_id} with offset {offset} and limit {limit}")
+        return tasks
     except Exception as e:
-        logger.error(f"Error retrieving users: {str(e)}")
+        logger.error(f"Error retrieving tasks for user {user_id}: {str(e)}")
         raise
 
 
-async def update_user(
+async def update_task(
     session: AsyncSession,
-    user_id: uuid.UUID,
-    user_update: UserUpdate
-) -> Optional[User]:
-    """Update a user by ID."""
+    task_id: uuid.UUID,
+    task_update: TaskUpdate
+) -> Optional[Task]:
+    """Update a task by ID."""
     try:
-        db_user = await get_user_by_id(session, user_id)
-        if not db_user:
-            logger.info(f"Attempt to update non-existent user with ID: {user_id}")
+        db_task = await get_task_by_id(session, task_id)
+        if not db_task:
+            logger.info(f"Attempt to update non-existent task with ID: {task_id}")
             return None
 
-        user_data = user_update.model_dump(exclude_unset=True)
-        db_user.sqlmodel_update(user_data)
+        task_data = task_update.model_dump(exclude_unset=True)
+        db_task.sqlmodel_update(task_data)
 
         await session.commit()
-        await session.refresh(db_user)
-        logger.info(f"Successfully updated user with ID: {db_user.id}")
-        return db_user
+        await session.refresh(db_task)
+        logger.info(f"Successfully updated task with ID: {db_task.id}")
+        return db_task
     except IntegrityError as e:
         await session.rollback()
-        logger.error(f"Integrity error updating user {user_id}: {str(e)}")
-        raise ValueError("Another user with this email already exists") from e
+        logger.error(f"Integrity error updating task {task_id}: {str(e)}")
+        raise ValueError("Error updating task") from e
     except Exception as e:
         await session.rollback()
-        logger.error(f"Unexpected error updating user {user_id}: {str(e)}")
+        logger.error(f"Unexpected error updating task {task_id}: {str(e)}")
         raise
 
 
-async def delete_user(session: AsyncSession, user_id: uuid.UUID) -> bool:
-    """Delete a user by ID."""
+async def delete_task(session: AsyncSession, task_id: uuid.UUID) -> bool:
+    """Delete a task by ID."""
     try:
-        db_user = await get_user_by_id(session, user_id)
-        if not db_user:
-            logger.info(f"Attempt to delete non-existent user with ID: {user_id}")
+        db_task = await get_task_by_id(session, task_id)
+        if not db_task:
+            logger.info(f"Attempt to delete non-existent task with ID: {task_id}")
             return False
 
-        await session.delete(db_user)
+        await session.delete(db_task)
         await session.commit()
-        logger.info(f"Successfully deleted user with ID: {user_id}")
+        logger.info(f"Successfully deleted task with ID: {task_id}")
         return True
     except Exception as e:
         await session.rollback()
-        logger.error(f"Error deleting user {user_id}: {str(e)}")
+        logger.error(f"Error deleting task {task_id}: {str(e)}")
         raise
 
 

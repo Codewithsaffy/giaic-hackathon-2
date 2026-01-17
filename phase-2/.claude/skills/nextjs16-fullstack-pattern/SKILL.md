@@ -1,352 +1,525 @@
 ---
 name: nextjs16-fullstack-pattern
-description: |
-  This skill should be used when building Next.js 16 App Router pages that fetch data from external APIs. It enforces patterns including centralized API clients, server-first components, and avoiding useEffect for data fetching.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+description: Expert in Next.js 16 fullstack applications with App Router, TypeScript, and integrated API patterns. Handles client-server communication, authentication integration, and modern React patterns.
+allowed-tools: Read, Grep, Glob, Edit, Write
 ---
 
-# Next.js 16 Fullstack Pattern Guide
+# Next.js 16 Fullstack Pattern
 
-This skill enforces the correct patterns for building Next.js 16 App Router pages that fetch data from external APIs, ensuring consistent architecture and best practices.
+This skill should be used when implementing Next.js 16 applications with the App Router, TypeScript, and integrated backend services.
 
-## Skill Purpose
+## Core Capabilities
 
-This skill acts as a **Guide/Standard-Enforcer** that provides a checklist before writing any frontend code to ensure adherence to the following constraints:
-- **Strict Separation:** UI components must NOT fetch directly. They must use a centralized `@/lib/api.ts` client.
-- **Server First:** Default to Server Components (`async function`). Only use `'use client'` for interactivity.
-- **No useEffect:** Strictly forbid `useEffect` for initial data fetching.
+### 1. App Router Structure
 
-## Before Implementation Checklist
-
-Before writing any frontend code, verify the following:
-
-### 1. API Client Setup ✅
-- [ ] Centralized API client exists at `@/lib/api.ts`
-- [ ] API client handles all external API communication
-- [ ] API client includes proper error handling and authentication
-- [ ] API client uses appropriate HTTP methods and headers
-
-### 2. Component Architecture ✅
-- [ ] Component is defined as an async function (Server Component) by default
-- [ ] Only add `'use client'` directive if interactivity is required
-- [ ] No `useEffect` hooks used for initial data fetching
-- [ ] Data fetching happens at the server level before rendering
-
-### 3. Data Fetching Strategy ✅
-- [ ] Server Component fetches data using native `fetch()` with appropriate caching options
-- [ ] Use `cache: 'no-store'` for dynamic data that should not be cached
-- [ ] Use `next: { revalidate: N }` for incremental static regeneration
-- [ ] Use `cache: 'force-cache'` for static data that should be cached
-- [ ] Data is passed as props to child components
-
-### 4. Component Separation ✅
-- [ ] Server Components handle data fetching and pass data as props
-- [ ] Client Components receive data as props and handle interactivity
-- [ ] Clear separation between data fetching and UI rendering
-
-## Implementation Patterns
-
-### ✅ CORRECT: Server Component with Data Fetching
-
+#### Root Layout with Authentication
 ```typescript
-// app/users/page.tsx
-import UserList from '@/components/user-list'
+import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
+import { AuthProvider } from '@/components/auth-provider';
+import { Toaster } from '@/components/ui/sonner';
 
-export default async function UsersPage() {
-  // Data fetching happens on the server
-  const res = await fetch('https://api.example.com/users', {
-    cache: 'no-store', // Dynamic data - no caching
-    next: { revalidate: 0 } // Ensure fresh data on every request
-  })
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch users')
-  }
-
-  const users = await res.json()
-
-  // Pass data as props to client component
-  return <UserList users={users} />
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
 }
 ```
 
+### 2. Client-Side Authentication Provider
+
+#### Auth Context Provider
 ```typescript
-// components/user-list.tsx
-'use client' // Only use 'use client' for interactivity
+'use client';
 
-import { useState } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useSession } from '@/lib/auth-client';
 
-interface User {
-  id: string
-  name: string
-  email: string
+interface AuthContextType {
+  user: any | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
 }
 
-export default function UserList({ users }: { users: User[] }) {
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+});
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { data: session, isPending } = useSession();
+
+  const [authState, setAuthState] = useState<AuthContextType>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+  });
+
+  useEffect(() => {
+    setAuthState({
+      user: session?.user || null,
+      isLoading: isPending,
+      isAuthenticated: !!session?.user,
+    });
+  }, [session, isPending]);
 
   return (
-    <div>
-      <ul>
-        {users.map(user => (
-          <li key={user.id} onClick={() => setSelectedUser(user)}>
-            {user.name}
-          </li>
-        ))}
-      </ul>
-      {selectedUser && (
-        <div>
-          <h3>{selectedUser.name}</h3>
-          <p>{selectedUser.email}</p>
-        </div>
-      )}
-    </div>
-  )
+    <AuthContext.Provider value={authState}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 ```
 
-### ✅ CORRECT: Centralized API Client
+### 3. API Client Integration
 
+#### Client-Side API Client with JWT
 ```typescript
-// lib/api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.example.com'
+import { authClient } from './auth-client';
 
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  headers?: Record<string, string>
-  body?: any
-  cache?: RequestCache
-  next?: {
-    revalidate?: number
-  }
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+// JWT token storage (in-memory for security)
+let cachedJWT: string | null = null;
+
+/**
+ * Get JWT token from Better Auth
+ * Caches token to avoid repeated requests
+ */
+async function getJWTToken(): Promise<string> {
+    // Return cached token if available
+    if (cachedJWT) {
+        return cachedJWT;
+    }
+
+    // Get token from Better Auth
+    const { data, error } = await authClient.token();
+
+    if (error || !data?.token) {
+        throw new Error('Failed to get JWT token: ' + (error?.message || 'No token returned'));
+    }
+
+    // Cache the token
+    cachedJWT = data.token;
+    return cachedJWT;
 }
 
-export async function apiClient<T = any>(
+/**
+ * Get current session and user ID
+ */
+async function getUserId(): Promise<string> {
+    const { data } = await authClient.getSession();
+
+    if (!data?.user?.id) {
+        throw new Error('Unauthorized: No active session');
+    }
+
+    return data.user.id;
+}
+
+/**
+ * Generic API client with JWT authentication
+ */
+async function apiClient<T>(
+    endpoint: string | ((userId: string) => string),
+    options: RequestInit = {}
+): Promise<T> {
+    const userId = await getUserId();
+    const jwt = await getJWTToken();
+
+    // Resolve endpoint
+    const urlPath = typeof endpoint === 'function' ? endpoint(userId) : endpoint;
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+        ...options.headers,
+    };
+
+    const response = await fetch(`${API_BASE_URL}${urlPath}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+            detail: 'Unknown error occurred'
+        }));
+        throw new Error(errorData.detail || `API Error: ${response.statusText}`);
+    }
+
+    if (response.status === 204) {
+        return {} as T;
+    }
+
+    return response.json();
+}
+
+export const api = {
+    getTasks: () =>
+        apiClient<Task[]>(userId => `/api/${userId}/tasks`),
+
+    getTaskById: (id: string) =>
+        apiClient<Task>(userId => `/api/${userId}/tasks/${id}`),
+
+    createTask: (task: { title: string; description?: string }) =>
+        apiClient<Task>(userId => `/api/${userId}/tasks`, {
+            method: 'POST',
+            body: JSON.stringify(task),
+        }),
+
+    updateTask: (id: string, task: { title?: string; description?: string; completed?: boolean }) =>
+        apiClient<Task>(userId => `/api/${userId}/tasks/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(task),
+        }),
+
+    toggleTaskComplete: (id: string) =>
+        apiClient<Task>(userId => `/api/${userId}/tasks/${id}/complete`, {
+            method: 'PATCH',
+        }),
+
+    deleteTask: (id: string) =>
+        apiClient<void>(userId => `/api/${userId}/tasks/${id}`, {
+            method: 'DELETE',
+        }),
+};
+```
+
+### 4. Server-Side API Client
+
+#### Server Components API Integration
+```typescript
+import { cookies } from 'next/headers';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+/**
+ * Server-side API client that handles all external API communication
+ * Attaches JWT token from cookies to requests when available
+ */
+export async function apiClientServer<T = any>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  // Get the JWT token from cookies
+  const cookieStore = await cookies();
+  const token = cookieStore.get('better-auth.session_token')?.value;
 
   const config: RequestInit = {
     method: options.method || 'GET',
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     cache: options.cache,
     next: options.next,
     ...(options.body && { body: JSON.stringify(options.body) })
-  }
+  };
 
   try {
-    const response = await fetch(url, config)
+    const response = await fetch(url, config);
 
     if (!response.ok) {
-      const errorData = await response.text()
-      throw new Error(`API request failed: ${response.status} - ${errorData}`)
+      const errorData = await response.text();
+      throw new Error(`API request failed: ${response.status} - ${errorData}`);
     }
 
-    return response.json()
+    return response.json();
   } catch (error) {
-    console.error(`API request error for ${url}:`, error)
-    throw error
+    console.error(`API request error for ${url}:`, error);
+    throw error;
   }
 }
 
-// Specific API functions
-export const usersApi = {
-  getAll: () => apiClient<User[]>('/users'),
-  getById: (id: string) => apiClient<User>(`/users/${id}`),
-  create: (userData: Omit<User, 'id'>) =>
-    apiClient<User>('/users', { method: 'POST', body: userData }),
-  update: (id: string, userData: Partial<User>) =>
-    apiClient<User>(`/users/${id}`, { method: 'PUT', body: userData }),
-  delete: (id: string) =>
-    apiClient<void>(`/users/${id}`, { method: 'DELETE' })
-}
+// Specific API functions for tasks (server-side)
+export const tasksApiServer = {
+  getAll: (userId: string) =>
+    apiClientServer<Task[]>(`/api/${userId}/tasks`),
 
-// Generic API functions for reuse
-export const api = {
-  get: <T = any>(endpoint: string, options?: Omit<RequestOptions, 'method'>) =>
-    apiClient<T>(endpoint, { ...options, method: 'GET' }),
-  post: <T = any>(endpoint: string, data?: any, options?: Omit<RequestOptions, 'method' | 'body'>) =>
-    apiClient<T>(endpoint, { ...options, method: 'POST', body: data }),
-  put: <T = any>(endpoint: string, data?: any, options?: Omit<RequestOptions, 'method' | 'body'>) =>
-    apiClient<T>(endpoint, { ...options, method: 'PUT', body: data }),
-  delete: <T = any>(endpoint: string, options?: Omit<RequestOptions, 'method'>) =>
-    apiClient<T>(endpoint, { ...options, method: 'DELETE' })
-}
+  getById: (userId: string, id: string) =>
+    apiClientServer<Task>(`/api/${userId}/tasks/${id}`),
+
+  create: (userId: string, taskData: { title: string; description?: string }) =>
+    apiClientServer<Task>(`/api/${userId}/tasks`, {
+      method: 'POST',
+      body: taskData
+    }),
+
+  update: (userId: string, id: string, taskData: Partial<Task>) =>
+    apiClientServer<Task>(`/api/${userId}/tasks/${id}`, {
+      method: 'PUT',
+      body: taskData
+    }),
+
+  delete: (userId: string, id: string) =>
+    apiClientServer<void>(`/api/${userId}/tasks/${id}`, {
+      method: 'DELETE'
+    })
+};
 ```
 
-### ❌ INCORRECT: Client Component Fetching Data Directly
+### 5. Component Patterns
 
+#### Protected Route Component
 ```typescript
-// DON'T DO THIS
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 
-export default function UsersPage() {
-  const [users, setUsers] = useState([])
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
 
-  // FORBIDDEN: useEffect for data fetching
+export function ProtectedRoute({ children, fallback = null }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
   useEffect(() => {
-    fetch('https://api.example.com/users')
-      .then(res => res.json())
-      .then(setUsers)
-  }, [])
-
-  return (
-    <ul>
-      {users.map(user => (
-        <li key={user.id}>{user.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-### ❌ INCORRECT: Direct API Call in Component
-
-```typescript
-// DON'T DO THIS
-export default async function UsersPage() {
-  // FORBIDDEN: Direct fetch without using centralized client
-  const res = await fetch('https://api.example.com/users')
-  const users = await res.json()
-
-  return <UserList users={users} />
-}
-```
-
-## Server Actions vs API Routes Guidance
-
-### Use Server Actions When:
-- Handling form submissions or mutations
-- Need to run server-side logic triggered by client interaction
-- Want to avoid creating separate API endpoints
-- Need to access server-side resources (databases, file systems)
-
-### Use API Routes When:
-- Need to expose endpoints for external services
-- Creating webhook handlers
-- Need fine-grained control over HTTP response headers/status
-- Building public API endpoints
-
-### ✅ Server Action Example:
-```typescript
-// actions/users.ts
-'use server'
-
-import { usersApi } from '@/lib/api'
-
-export async function createUser(userData: any) {
-  try {
-    const user = await usersApi.create(userData)
-    return { success: true, user }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
-}
-```
-
-```typescript
-// components/user-form.tsx
-'use client'
-
-import { createUser } from '@/actions/users'
-
-export default function UserForm() {
-  const handleSubmit = async (formData: FormData) => {
-    const result = await createUser(Object.fromEntries(formData))
-    if (result.success) {
-      // Handle success
+    if (!isLoading && !isAuthenticated) {
+      toast.error('Please sign in to access this page');
+      router.push('/auth/sign-in');
     }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
+  if (!isAuthenticated) {
+    return fallback;
+  }
+
+  return <>{children}</>;
+}
+```
+
+#### Data Fetching Component with Error Boundary
+```typescript
+'use client';
+
+import { useState, useEffect, ReactNode } from 'react';
+import { api } from '@/lib/api';
+
+interface DataFetcherProps<T> {
+  fetchFunction: () => Promise<T>;
+  children: (data: T, isLoading: boolean) => ReactNode;
+  onError?: (error: Error) => void;
+}
+
+export function DataFetcher<T>({
+  fetchFunction,
+  children,
+  onError
+}: DataFetcherProps<T>) {
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const result = await fetchFunction();
+        setData(result);
+        setError(null);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Unknown error');
+        setError(error);
+        if (onError) {
+          onError(error);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (error) {
+    return <div className="text-red-500">Error: {error.message}</div>;
+  }
+
+  return <>{children(data as T, isLoading)}</>;
+}
+```
+
+### 6. Form Handling with React Hook Form
+
+#### Form Component Pattern
+```typescript
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
+
+const taskSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200),
+  description: z.string().optional(),
+});
+
+type TaskFormData = z.infer<typeof taskSchema>;
+
+interface TaskFormProps {
+  onSuccess?: () => void;
+  initialData?: TaskFormData;
+}
+
+export function TaskForm({ onSuccess, initialData }: TaskFormProps) {
+  const form = useForm<TaskFormData>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: initialData || {
+      title: '',
+      description: '',
+    },
+  });
+
+  const onSubmit = async (data: TaskFormData) => {
+    try {
+      if (initialData) {
+        // Update existing task
+        await api.updateTask(initialData.id, data);
+        toast.success('Task updated successfully');
+      } else {
+        // Create new task
+        await api.createTask(data);
+        toast.success('Task created successfully');
+      }
+
+      if (onSuccess) {
+        onSuccess();
+      }
+      form.reset();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(`Failed to save task: ${errorMessage}`);
+    }
+  };
+
   return (
-    <form action={handleSubmit}>
-      <input name="name" required />
-      <input name="email" type="email" required />
-      <button type="submit">Create User</button>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <Input
+          {...form.register('title')}
+          placeholder="Task title"
+          className={form.formState.errors.title ? 'border-red-500' : ''}
+        />
+        {form.formState.errors.title && (
+          <p className="text-red-500 text-sm mt-1">{form.formState.errors.title.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Input
+          {...form.register('description')}
+          placeholder="Description (optional)"
+        />
+      </div>
+
+      <Button type="submit" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? 'Saving...' : initialData ? 'Update' : 'Create'}
+      </Button>
     </form>
-  )
+  );
 }
 ```
 
-## Data Fetching Options in Server Components
+### 7. Environment Configuration
 
-### Static Data (cached until manually invalidated):
-```typescript
-const staticData = await fetch('https://api.example.com/data', {
-  cache: 'force-cache' // Default behavior
-})
+#### Frontend (.env)
+```bash
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=your-super-secret-jwt-key-here
 ```
 
-### Dynamic Data (fetched on every request):
+### 8. Component Composition Pattern
+
+#### Page Layout with Sidebar
 ```typescript
-const dynamicData = await fetch('https://api.example.com/data', {
-  cache: 'no-store'
-})
-```
+import { Sidebar } from '@/components/sidebar';
+import { ReactNode } from 'react';
 
-### Incrementally Revalidated Data:
-```typescript
-const revalidatedData = await fetch('https://api.example.com/data', {
-  next: { revalidate: 60 } // Revalidate every 60 seconds
-})
-```
+interface DashboardLayoutProps {
+  children: ReactNode;
+}
 
-## Error Handling
-
-Always implement proper error boundaries and error handling:
-
-```typescript
-// app/error.tsx
-'use client'
-
-import { useEffect } from 'react'
-
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
-  useEffect(() => {
-    console.error(error)
-  }, [error])
-
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div>
-      <h2>Something went wrong!</h2>
-      <button onClick={() => reset()}>Try again</button>
+    <div className="flex h-screen">
+      <Sidebar />
+      <main className="flex-1 overflow-auto p-6">
+        {children}
+      </main>
     </div>
-  )
+  );
 }
 ```
 
-## Performance Considerations
+## Best Practices
 
-- Leverage Next.js 16's streaming capabilities for faster loading
-- Use appropriate caching strategies based on data volatility
-- Implement proper loading states with Suspense boundaries
-- Minimize client-side JavaScript by keeping UI logic in Server Components
+1. **Type Safety**: Use TypeScript interfaces for all API responses and props
+2. **Error Boundaries**: Implement error boundaries for graceful error handling
+3. **Loading States**: Always handle loading and error states in components
+4. **Authentication Flow**: Implement consistent authentication patterns across components
+5. **API Client Consistency**: Use centralized API clients with proper error handling
+6. **Component Composition**: Favor composition over inheritance for reusable UI
+7. **Accessibility**: Ensure all components are accessible with proper ARIA attributes
+8. **Performance**: Use React.memo and useCallback for performance optimization
+9. **Security**: Sanitize user input and validate data before sending to API
+10. **User Experience**: Provide feedback for all user interactions
 
-## Final Verification Checklist
+## Modern React Patterns
 
-Before finalizing your component, verify:
+1. **Server Components**: Leverage server components for data fetching
+2. **Streaming**: Use React streaming for improved loading experiences
+3. **Suspense**: Implement Suspense boundaries for async components
+4. **Actions**: Use React Actions for server-side mutations
+5. **Caching**: Implement proper caching strategies with `cache` and `fetch`
+6. **Parallel Routes**: Use parallel routes for complex layouts
+7. **Intercepting Routes**: Use intercepting routes for modal overlays
 
-- [ ] All data fetching happens in Server Components
-- [ ] UI components only receive data as props
-- [ ] No `useEffect` hooks used for initial data fetching
-- [ ] All API calls go through centralized `@/lib/api.ts` client
-- [ ] Only client components with interactivity have `'use client'` directive
-- [ ] Proper error handling is implemented
-- [ ] Appropriate caching strategy is applied
-- [ ] Component follows the server-first architecture pattern
-- [ ] Error boundaries are implemented for graceful error handling
-- [ ] Loading states are handled with Suspense boundaries where appropriate
-- [ ] API calls include proper error handling and status code checks
-- [ ] Cache strategies are appropriate for the data type (static vs dynamic)
+## Troubleshooting
+
+### Common Issues
+- Hydration errors: Ensure client and server render consistently
+- Loading states: Handle async operations with proper loading indicators
+- Authentication: Verify JWT token handling between client and server
+- Data fetching: Use proper error handling and caching strategies
+- Form validation: Implement consistent validation across forms
