@@ -1,24 +1,35 @@
 <!-- SYNC IMPACT REPORT
-Version change: 1.0.0 → 1.1.0
-Modified principles: Spec-Driven Development → Spec-Driven Development from Scratch, Reusable Intelligence Over Reimplementation → Reusable Intelligence Policy, Independent Verification → Reusable Intelligence Policy, User-Scoped Authentication → Authentication Requirement
-Added sections: Core Invariants, Reusable Intelligence Policy, Architectural Invariants, Security Invariants
-Removed sections: Independent Verification (merged into other sections)
-Templates requiring updates: .specify/templates/plan-template.md, .specify/templates/spec-template.md, .specify/templates/tasks-template.md, .specify/templates/commands/*.md ✅ updated
+Version change: 1.1.0 → 1.2.0
+Modified principles: Spec-Driven Full-Stack App Constitution → Conversational AI Layer Constitution with new system constraints and architectural invariants
+Added sections: System Constraints section, MCP Tool Integration invariant, Statelessness Requirement invariant, MCP Tool Security invariant
+Removed sections: Built from Scratch invariant (replaced with layered architecture approach)
+Templates requiring updates: .specify/templates/plan-template.md, .specify/templates/spec-template.md, .specify/templates/tasks-template.md ✅ reviewed for consistency
 Follow-up TODOs: None
 -->
 
-# Spec-Driven Full-Stack App Constitution
+# Conversational AI Layer Constitution
+
+## System Constraints
+
+1. This layer EXTENDS the existing Full-Stack Todo Web Application.
+2. Existing authentication, UI, REST APIs, and database models MUST NOT be rewritten.
+3. All task operations MUST reuse existing task services.
+4. MCP tools MUST be stateless.
+5. FastAPI server MUST remain stateless.
+6. Conversation context MUST persist only in the database.
+7. AI agents MUST interact with the system exclusively through MCP tools.
+8. No manual coding — implementation via Claude Code only.
 
 ## Core Invariants
 
-### I. Built from Scratch
-This project is built entirely from scratch. No pre-existing application code is leveraged; all components are developed specifically for this implementation.
+### I. Layered Architecture
+The Conversational AI Layer is built as an extension to the existing application. It integrates seamlessly with existing components while maintaining clear separation of concerns.
 
-### II. Spec-Kit Plus Workflow
-All development follows the Spec-Kit Plus workflow. Every feature must be specified, planned, and task-broken down before implementation begins.
-
-### III. Claude Code Only
+### II. Claude Code Only
 No manual coding is performed outside Claude Code. All code generation, modification, and management is performed through Claude Code tools and processes.
+
+### III. Spec-Kit Plus Workflow
+All development follows the Spec-Kit Plus workflow. Every feature must be specified, planned, and task-broken down before implementation begins.
 
 ## Reusable Intelligence Policy
 
@@ -39,8 +50,11 @@ Frontend and backend are separate services. Each component maintains independent
 ### II. Authentication Requirement
 Authentication is mandatory for all user-scoped operations. Every user action that accesses or modifies personal data must be authenticated and authorized.
 
-### III. Persistent Storage Requirement
-Persistent storage is required for all user data. All user-generated content must be stored durably and reliably.
+### III. MCP Tool Integration
+AI agents interact with the system exclusively through MCP tools, ensuring standardized communication and consistent behavior.
+
+### IV. Statelessness Requirement
+Both MCP tools and FastAPI server maintain statelessness, with all conversation context persisted only in the database.
 
 ## Security Invariants
 
@@ -53,8 +67,11 @@ Users may only access their own data. Strong data isolation is enforced at both 
 ### III. Credential Validation
 All requests must include valid authentication credentials. Invalid or missing credentials result in access denial with appropriate error responses.
 
+### IV. MCP Tool Security
+MCP tools must follow security best practices, with proper authentication and authorization for all tool invocations.
+
 ## Governance
 
 All development activities must comply with this constitution. Changes to these principles require explicit documentation and approval. The constitution serves as the authoritative guide for development decisions and architectural choices.
 
-**Version**: 1.1.0 | **Ratified**: 2026-01-06 | **Last Amended**: 2026-01-06
+**Version**: 1.2.0 | **Ratified**: 2026-01-06 | **Last Amended**: 2026-01-14

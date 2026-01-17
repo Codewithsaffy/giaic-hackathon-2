@@ -14,22 +14,22 @@ export default function AddTaskPage() {
     };
 
     return (
-        <div className="w-full px-4 py-8 md:px-8 md:py-12 max-w-2xl mx-auto min-h-screen flex flex-col justify-center">
+        <div className="w-full px-8 py-12 max-w-2xl mx-auto min-h-screen flex flex-col justify-center">
             <div className="w-full">
                 <Button
                     variant="ghost"
                     onClick={() => router.back()}
-                    className="text-neutral-500 hover:text-white mb-8 md:mb-12 -ml-2 md:-ml-4 flex items-center gap-2 transition-all"
+                    className="text-neutral-500 hover:text-white mb-12 -ml-4 flex items-center gap-2 transition-all"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Back to Terminal
                 </Button>
 
-                <div className="mb-8 md:mb-12">
-                    <h1 className="text-3xl md:text-4xl font-bold font-heading text-white tracking-tighter mb-2">
+                <div className="mb-12">
+                    <h1 className="text-4xl font-bold font-heading text-white tracking-tighter mb-2">
                         Deploy New Node
                     </h1>
-                    <p className="text-neutral-500 font-light text-sm md:text-base">
+                    <p className="text-neutral-500 font-light">
                         Initialize a new task object within the operational workspace.
                     </p>
                 </div>

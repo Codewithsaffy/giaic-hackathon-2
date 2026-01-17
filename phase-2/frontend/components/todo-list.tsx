@@ -36,7 +36,7 @@ export default function TodoList({ initialTasks = [] }: { initialTasks?: Task[] 
     setTasks([newTask, ...tasks]);
   };
 
-  const toggleTaskCompletion = async (id: string) => {
+  const toggleTaskCompletion = async (id: number) => {
     const taskIndex = tasks.findIndex((t) => t.id === id);
     if (taskIndex === -1) return;
 
@@ -66,7 +66,7 @@ export default function TodoList({ initialTasks = [] }: { initialTasks?: Task[] 
     }
   };
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = async (id: number) => {
     const taskIndex = tasks.findIndex((t) => t.id === id);
     if (taskIndex === -1) return;
 
@@ -93,15 +93,15 @@ export default function TodoList({ initialTasks = [] }: { initialTasks?: Task[] 
   };
 
   return (
-    <div className="w-full px-4 py-6 md:px-8 md:py-10 max-w-7xl mx-auto">
+    <div className="w-full px-8 py-10 max-w-7xl mx-auto">
       {/* Dashboard Top Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <span className="badge-best uppercase tracking-tighter">WORKSPACE 01</span>
             <span className="text-neutral-700 text-xs font-mono">ID: 0x7FA2...</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold font-heading text-white tracking-tighter">
+          <h1 className="text-4xl font-bold font-heading text-white tracking-tighter">
             Operational Dashboard
           </h1>
         </div>
@@ -178,7 +178,7 @@ export default function TodoList({ initialTasks = [] }: { initialTasks?: Task[] 
                         variant="ghost"
                         size="icon"
                         onClick={() => deleteTask(task.id)}
-                        className="w-6 h-6 rounded text-neutral-600 hover:text-red-500 hover:bg-red-500/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        className="w-6 h-6 rounded text-neutral-600 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -205,7 +205,7 @@ export default function TodoList({ initialTasks = [] }: { initialTasks?: Task[] 
                         </div>
                       </div>
                       <span className="text-[9px] text-neutral-700 font-mono">
-                        #{task.id.slice(0, 6)}
+                        #{task.id}
                       </span>
                     </div>
                   </div>

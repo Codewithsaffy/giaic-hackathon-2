@@ -31,6 +31,9 @@ export const metadata: Metadata = {
 
 import { Toaster } from "@/components/ui/sonner";
 
+import { ChatProvider } from "@/components/chat-provider";
+import { ChatSidebar } from "@/components/chat-sidebar";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -42,29 +45,36 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* ChatKit Web Component - Required for @openai/chatkit-react */}
+        <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async></script>
+      </head>
       <body
         className={`${outfit.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} font-body bg-[#020202] text-foreground min-h-screen overflow-x-hidden`}
       >
-        <div className="flex flex-col md:flex-row min-h-screen">
-          <Sidebar />
+        <ChatProvider>
+          <div className="flex">
+            <Sidebar />
 
-          <div className="flex-1 flex flex-col min-h-screen pb-20 md:pb-0 md:pl-20">
-            {/* Header */}
-            <header className="sticky top-0 z-40 w-full h-16 border-b border-neutral-900 bg-black/50 backdrop-blur-xl flex items-center px-4 md:px-8">
-              <Link href="/" className="font-heading font-bold text-xl tracking-tighter text-white">
-                TASKFLOW<span className="text-neutral-500">.</span>
-              </Link>
-            </header>
+            <div className="flex-1 flex flex-col min-h-screen pl-20">
+              {/* Header */}
+              <header className="sticky top-0 z-40 w-full h-16 border-b border-neutral-900 bg-black/50 backdrop-blur-xl flex items-center px-8">
+                <Link href="/" className="font-heading font-bold text-xl tracking-tighter text-white">
+                  TASKFLOW<span className="text-neutral-500">.</span>
+                </Link>
+              </header>
 
-            {/* Main Content */}
-            <main className="flex-1 relative">
-              {/* Ambient Background Noise/Grain Overlay */}
-              <div className="absolute inset-0 noise-overlay pointer-events-none opacity-[0.03]"></div>
-              {children}
-            </main>
+              {/* Main Content */}
+              <main className="flex-1 relative">
+                {/* Ambient Background Noise/Grain Overlay */}
+                <div className="absolute inset-0 noise-overlay pointer-events-none opacity-[0.03]"></div>
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster theme="dark" position="top-right" closeButton />
+          <ChatSidebar />
+          <Toaster theme="dark" position="top-right" closeButton />
+        </ChatProvider>
       </body>
     </html>
   );

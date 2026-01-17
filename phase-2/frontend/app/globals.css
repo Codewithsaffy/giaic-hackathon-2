@@ -160,15 +160,15 @@
 
 @layer utilities {
   .sidebar-container {
-    @apply fixed left-0 h-16 w-full bottom-0 flex flex-row items-center justify-around py-0 px-4 bg-black/80 backdrop-blur-xl border-t border-border z-50 transition-all duration-300 md:top-0 md:h-screen md:w-20 md:flex-col md:justify-start md:py-6 md:border-r md:border-t-0;
+    @apply fixed left-0 top-0 h-screen w-20 flex flex-col items-center py-6 bg-black border-r border-border z-50 transition-all duration-300;
   }
 
   .sidebar-item {
-    @apply p-2 rounded-xl transition-all duration-200 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-neutral-900 flex flex-col items-center justify-center gap-1 w-auto md:w-20 md:mb-4 md:p-3;
+    @apply mb-4 p-3 rounded-xl transition-all duration-200 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-neutral-900 flex flex-col items-center gap-1 w-20;
   }
  
   .sidebar-item.active {
-    @apply text-foreground md:bg-neutral-900/50 md:border md:border-neutral-700/50 md:shadow-inner md:shadow-white/5;
+    @apply bg-neutral-900/50 text-foreground border border-neutral-700/50 shadow-inner shadow-white/5;
   }
  
   .sidebar-label {
