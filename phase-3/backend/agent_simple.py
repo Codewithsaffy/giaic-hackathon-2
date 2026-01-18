@@ -35,7 +35,7 @@ client = AsyncOpenAI(
 
 # Using Cerebras high-performance model
 model = OpenAIChatCompletionsModel(
-    model="gpt-oss-120b", 
+    model="qwen-3-32b", 
     openai_client=client
 )
 
