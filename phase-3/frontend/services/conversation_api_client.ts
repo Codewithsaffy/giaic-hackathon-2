@@ -56,7 +56,8 @@ class ConversationAPIClient {
   private baseUrl: string;
 
   constructor(baseURL?: string) {
-    this.baseUrl = baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    this.baseUrl = baseURL || envUrl || 'http://127.0.0.1:8000';
 
     // Initialize axios client with base configuration
     this.axiosClient = axios.create({
