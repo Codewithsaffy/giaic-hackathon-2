@@ -80,14 +80,18 @@ async def run_task_agent(user_id: str, message: str, mcp_server=None) -> str:
             # Fallback to one-off connection with robust timeout
             current_dir = os.path.dirname(os.path.abspath(__file__))
             mcp_server_path = os.path.join(current_dir, "mcp_server_tasks.py")
+            logger.info(f"Starting MCP server with executable: {sys.executable}")
+            logger.info(f"MCP server path: {mcp_server_path}")
+            logger.info(f"Current working directory: {os.getcwd()}")
             
             async with MCPServerStdio(
                 name="TaskManager",
                 params={
                     "command": sys.executable,
-                    "args": [mcp_server_path]
+                    "args": ["-u", mcp_server_path],
+                    "env": os.environ.copy()
                 },
-                client_session_timeout_seconds=30
+                client_session_timeout_seconds=120
             ) as single_mcp:
                 return await execute_with_mcp(single_mcp)
 
