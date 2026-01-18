@@ -46,7 +46,8 @@ export function ChatSidebar() {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:8000/api/chat/simple', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiUrl}/api/chat/simple`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
