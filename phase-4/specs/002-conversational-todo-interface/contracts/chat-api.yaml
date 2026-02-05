@@ -1,0 +1,290 @@
+openapi: 3.0.0
+info:
+  title: Conversational Todo API
+  version: 1.0.0
+  description: API for managing conversations and chat interactions with AI assistant for todo management
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send a message to the AI assistant and receive a response
+      description: Process user's natural language input and return AI response, performing any required task operations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The ID of the user sending the message
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+                - conversation_id
+              properties:
+                message:
+                  type: string
+                  description: The user's message in natural language
+                  example: "Add a task to buy groceries"
+                conversation_id:
+                  type: string
+                  description: The ID of the conversation (null for new conversation)
+                  example: "uuid-v4-here"
+                metadata:
+                  type: object
+                  description: Optional metadata about the request
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Successful response from AI assistant
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - response
+                  - conversation_id
+                  - task_operations
+                properties:
+                  response:
+                    type: string
+                    description: The AI assistant's response to the user
+                    example: "I've added the task 'buy groceries' to your list."
+                  conversation_id:
+                    type: string
+                    description: The ID of the conversation
+                    example: "uuid-v4-here"
+                  task_operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskOperation'
+                  next_action:
+                    type: string
+                    description: Optional next action hint
+                    enum: [continue_conversation, task_completed, error_occurred]
+        '400':
+          description: Bad request - invalid input
+        '401':
+          description: Unauthorized - invalid or missing JWT
+        '403':
+          description: Forbidden - user trying to access another user's conversation
+        '500':
+          description: Internal server error
+      security:
+        - jwt_auth: []
+
+  /api/{user_id}/conversations:
+    get:
+      summary: List user's conversations
+      description: Retrieve a list of conversation summaries for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The ID of the user whose conversations to list
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of conversations to return
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of conversations to skip
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of user's conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - conversations
+                  - total_count
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConversationSummary'
+                  total_count:
+                    type: integer
+        '401':
+          description: Unauthorized - invalid or missing JWT
+        '403':
+          description: Forbidden - user trying to access another user's conversations
+        '500':
+          description: Internal server error
+      security:
+        - jwt_auth: []
+
+  /api/{user_id}/conversations/{conversation_id}:
+    get:
+      summary: Get conversation details
+      description: Retrieve details and messages for a specific conversation
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The ID of the user whose conversation to retrieve
+          schema:
+            type: string
+        - name: conversation_id
+          in: path
+          required: true
+          description: The ID of the conversation to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conversation details with messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - conversation
+                  - messages
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+        '401':
+          description: Unauthorized - invalid or missing JWT
+        '403':
+          description: Forbidden - user trying to access another user's conversation
+        '404':
+          description: Conversation not found
+        '500':
+          description: Internal server error
+      security:
+        - jwt_auth: []
+
+components:
+  schemas:
+    Conversation:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - created_at
+        - updated_at
+        - is_active
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+
+    ConversationSummary:
+      type: object
+      required:
+        - id
+        - title
+        - created_at
+        - updated_at
+        - is_active
+        - message_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+        message_count:
+          type: integer
+
+    ChatMessage:
+      type: object
+      required:
+        - id
+        - conversation_id
+        - role
+        - content
+        - timestamp
+        - sequence_number
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        sequence_number:
+          type: integer
+
+    TaskOperation:
+      type: object
+      required:
+        - id
+        - operation_type
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        operation_type:
+          type: string
+          enum: [add_task, list_tasks, update_task, complete_task, delete_task]
+        raw_input:
+          type: string
+        parsed_parameters:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        result:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+
+  securitySchemes:
+    jwt_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for user authentication
