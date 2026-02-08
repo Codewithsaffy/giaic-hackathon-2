@@ -1,0 +1,35 @@
+image:
+  repository: todo-frontend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 3000
+  nodePort: 30000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+probes:
+  liveness:
+    path: /
+    initialDelaySeconds: 30
+  readiness:
+    path: /
+    initialDelaySeconds: 10
+
+env:
+  databaseUrl: "" # Sensitive - DO NOT COMMIT
+  betterAuthSecret: "" # Sensitive - DO NOT COMMIT
+  betterAuthUrl: "http://localhost:3000"
+  nextPublicApiUrl: "http://localhost:8000"
+  internalApiUrl: "http://todo-backend:8000"
+
+replicaCount: 1

@@ -1,0 +1,36 @@
+image:
+  repository: todo-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 30
+  readiness:
+    path: /health
+    initialDelaySeconds: 10
+
+env:
+  databaseUrl: "" # user must provide - DO NOT COMMIT SECRETS
+  openaiApiKey: "" # user must provide
+  cerebrasApiKey: "" # user must provide
+  betterAuthSecret: "very_secret_key" # shared with frontend
+  allowedOrigins: "http://localhost:3000,http://127.0.0.1:3000"
+  betterAuthUrl: "http://todo-frontend"
+  apiAudience: "http://localhost:8000"
+
+replicaCount: 1

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: todo-chatbot-features
+description: A Helm chart for the Todo Chatbot with Intermediate and Advanced Features
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: api-gateway
+    version: "0.1.0"
+    repository: "file://charts/api-gateway"
+    condition: api-gateway.enabled
+  - name: task-service
+    version: "0.1.0"
+    repository: "file://charts/task-service"
+    condition: task-service.enabled
+  - name: notification-service
+    version: "0.1.0"
+    repository: "file://charts/notification-service"
+    condition: notification-service.enabled
+  - name: recurring-task-service
+    version: "0.1.0"
+    repository: "file://charts/recurring-task-service"
+    condition: recurring-task-service.enabled
