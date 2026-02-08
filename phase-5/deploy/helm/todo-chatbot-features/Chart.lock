@@ -1,0 +1,15 @@
+dependencies:
+- name: api-gateway
+  repository: file://charts/api-gateway
+  version: 0.1.0
+- name: task-service
+  repository: file://charts/task-service
+  version: 0.1.0
+- name: notification-service
+  repository: file://charts/notification-service
+  version: 0.1.0
+- name: recurring-task-service
+  repository: file://charts/recurring-task-service
+  version: 0.1.0
+digest: sha256:275cbf319478275b10cf58b724ce7b7f64862bb7728be425915f135bbb8dd094
+generated: "2026-02-08T14:45:27.8185822+05:00"

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-backend.fullname" . }}
+  labels:
+    {{- include "todo-backend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "todo-backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "todo-backend"
+        dapr.io/app-port: "8000"
+        dapr.io/config: "appconfig"
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        rollout.restartedAt: {{ now | quote }}
+      labels:
+        {{- include "todo-backend.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "todo-backend.fullname" . }}
+                  key: database-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "todo-backend.fullname" . }}
+                  key: openai-api-key
+            - name: CEREBRAS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "todo-backend.fullname" . }}
+                  key: cerebras-api-key
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "todo-backend.fullname" . }}
+                  key: better-auth-secret
+            - name: ALLOWED_ORIGINS
+              value: {{ .Values.env.allowedOrigins | quote }}
+            - name: BETTER_AUTH_URL
+              value: {{ .Values.env.betterAuthUrl | quote }}
+            - name: API_AUDIENCE
+              value: {{ .Values.env.apiAudience | quote }}
