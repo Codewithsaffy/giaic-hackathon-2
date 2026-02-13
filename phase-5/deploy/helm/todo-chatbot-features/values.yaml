@@ -1,0 +1,93 @@
+# Default values for todo-chatbot-features.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+api-gateway:
+  enabled: true
+  image:
+    repository: api-gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: "api-gateway"
+    appPort: 80
+    appProtocol: "http"
+    sidecarCpuLimit: "100m"
+    sidecarMemoryLimit: "128Mi"
+    config: "dapr-config"
+
+task-service:
+  enabled: true
+  image:
+    repository: task-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: "task-service"
+    appPort: 80
+    appProtocol: "http"
+    sidecarCpuLimit: "100m"
+    sidecarMemoryLimit: "128Mi"
+    config: "dapr-config"
+
+notification-service:
+  enabled: true
+  image:
+    repository: notification-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: "notification-service"
+    appPort: 80
+    appProtocol: "http"
+    sidecarCpuLimit: "100m"
+    sidecarMemoryLimit: "128Mi"
+    config: "dapr-config"
+
+recurring-task-service:
+  enabled: true
+  image:
+    repository: recurring-task-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: "recurring-task-service"
+    appPort: 80
+    appProtocol: "http"
+    sidecarCpuLimit: "100m"
+    sidecarMemoryLimit: "128Mi"
+    config: "dapr-config"

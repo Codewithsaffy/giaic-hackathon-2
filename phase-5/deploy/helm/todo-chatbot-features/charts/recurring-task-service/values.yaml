@@ -1,0 +1,62 @@
+replicaCount: 1
+
+image:
+  repository: todo-chatbot/recurring-task-service
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  limits:
+    cpu: 700m
+    memory: 1Gi
+  requests:
+    cpu: 300m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Dapr annotations for the Recurring Task Service
+dapr:
+  enabled: true
+  appId: "recurring-task-service"
+  appPort: 80 # The port your FastAPI app listens on
+  appProtocol: "http"
+  sidecarCpuLimit: "100m"
+  sidecarMemoryLimit: "256Mi"
+  config: "dapr-config"
+  components:
+    - name: "pubsub-kafka"
+      type: "pubsub.kafka"
+    - name: "statestore"
+      type: "state.postgresql"
+    - name: "kubernetes-secretstore"
+      type: "secretstores.kubernetes"

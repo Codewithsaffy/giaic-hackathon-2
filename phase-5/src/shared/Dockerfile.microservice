@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Removed apt-get update to avoid hanging builds in Minikube
+# Skip system dependencies; assume python-only libs for now
+# If gcc is needed for a specific lib, we may need to use a non-slim image
+
+# Copy requirements from shared
+COPY src/shared/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy all source
+COPY src/ /app/src/
+
+# Argument to set which service to run
+ARG SERVICE_NAME
+ENV SERVICE_NAME=${SERVICE_NAME}
+
+# Set environment variable for Dapr sidecar communication
+ENV DAPR_HTTP_PORT=3500
+
+EXPOSE 8000
+
+# Run the app dynamically based on SERVICE_NAME
+CMD ["sh", "-c", "uvicorn src.${SERVICE_NAME}.main:app --host 0.0.0.0 --port 8000"]
